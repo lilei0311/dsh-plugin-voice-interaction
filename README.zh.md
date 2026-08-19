@@ -16,11 +16,15 @@
 
 ## 安装
 
+这个包自带 `dsh.bundle` manifest,所以用 `dsh plugin` 一步就能装好并挂进某个 profile——跟 `deepseek-harness` 自己仓库里其他 `packages/client/*` 界面插件的机制完全一样:
+
 ```sh
-npm install dsh-plugin-voice-interaction
+dsh plugin --profile web add dsh-plugin-voice-interaction
+# 或者直接从 GitHub 装,不需要发布到 npm:
+dsh plugin --profile web add github:lilei0311/dsh-plugin-voice-interaction
 ```
 
-跟其他 `packages/client/*` 界面插件一样加进你的 `dsh` Web 部署的插件组合里——这个包自带 `dsh.client` 清单(`inject`、`platform: "web"`),Loader 会通过 `exports["./client"]` 自动发现浏览器那一半。
+这会把这个包追加进 profile 的 `dsh.profile.bundles`,并应用 [`cordis.patch.yml`](cordis.patch.yml)——插入的是一个空的宿主端插件行。浏览器那一半是通过这个包自带的 `dsh.client` 清单(`inject`、`platform: "web"`)和 `exports["./client"]` 单独发现的,你这边不需要额外配置。用 `dsh --profile web --dump-config` 可以确认这一行确实生效了。完整的 bundle/profile 机制见 [deepseek-harness 的插件安装教程](https://github.com/deepseek-ai/deepseek-harness/blob/main/docs/user/develop/basic/publish.md)。
 
 ## 手动验证清单
 

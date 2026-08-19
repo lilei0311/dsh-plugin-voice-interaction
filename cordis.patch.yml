@@ -1,0 +1,9 @@
+# The dsh-plugin-voice-interaction bundle patch: the layer `dsh plugin add`
+# (or a manual cordis.patch.yml `insert`) applies when a profile lists this
+# package as a bundle. The host-side row just registers the (empty) apply()
+# so the plugin exists in the tree; the browser half is discovered
+# separately through this package's `dsh.client` manifest and its
+# `exports["./client"]` entry.
+- insert:
+    - id: voice-interaction
+      name: dsh-plugin-voice-interaction

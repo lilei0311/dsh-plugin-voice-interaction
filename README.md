@@ -16,11 +16,15 @@ Unlike a backend `dsh` plugin, this one only does anything inside the assembled 
 
 ## Install
 
+This package declares a `dsh.bundle` manifest, so `dsh plugin` installs and wires it into a profile in one step — same mechanics as any other `packages/client/*` surface plugin in `deepseek-harness` itself:
+
 ```sh
-npm install dsh-plugin-voice-interaction
+dsh plugin --profile web add dsh-plugin-voice-interaction
+# or straight from GitHub, no npm publish needed:
+dsh plugin --profile web add github:lilei0311/dsh-plugin-voice-interaction
 ```
 
-Add it to your `dsh` Web deployment's plugin composition the same way as any other `packages/client/*` surface plugin — this package ships a `dsh.client` manifest (`inject`, `platform: "web"`) so the Loader discovers its browser half through `exports["./client"]` automatically.
+That appends this package to the profile's `dsh.profile.bundles` and applies [`cordis.patch.yml`](cordis.patch.yml), which inserts the (empty, host-side) plugin row. The browser half is discovered separately through this package's `dsh.client` manifest (`inject`, `platform: "web"`) and its `exports["./client"]` entry — no extra config needed on your side. `dsh --profile web --dump-config` shows the composed row so you can confirm it landed. See [deepseek-harness's plugin-install tutorial](https://github.com/deepseek-ai/deepseek-harness/blob/main/docs/user/develop/basic/publish.md) for the full bundle/profile mechanics this relies on.
 
 ## Manual verification checklist
 
