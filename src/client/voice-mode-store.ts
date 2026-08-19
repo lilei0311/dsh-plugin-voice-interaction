@@ -12,7 +12,11 @@ type Listener = () => void
 
 const enabled = new Map<string, boolean>()
 const listeners = new Map<string, Set<Listener>>()
-const lastAutoRead = new Map<string, string>()
+// Every messageId already auto-read per session, not just the last one —
+// otherwise scrolling back to an earlier reply after a later one has spoken
+// re-triggers it (a real bug: comparing against only the last claimed id
+// only protects the single most recent message).
+const autoReadMessages = new Map<string, Set<string>>()
 
 /**
  * Current voice-mode flag for one session.
@@ -54,13 +58,19 @@ export function subscribeVoiceMode(sessionId: string, listener: Listener): () =>
 /**
  * Claim one message as auto-read for its session, first-caller-wins.
  * Prevents a re-mounted (e.g. scrolled back into view) read-aloud action
- * from re-speaking a reply voice mode already read once.
+ * from re-speaking a reply voice mode already read once — for every message
+ * in the session, not just the latest.
  * @param sessionId - the owning session.
  * @param messageId - the finalized assistant message's stable id.
  * @returns true the first time this exact pair is claimed; false on every later call.
  */
 export function claimAutoRead(sessionId: string, messageId: string): boolean {
-  if (lastAutoRead.get(sessionId) === messageId) return false
-  lastAutoRead.set(sessionId, messageId)
+  let claimed = autoReadMessages.get(sessionId)
+  if (claimed === undefined) {
+    claimed = new Set()
+    autoReadMessages.set(sessionId, claimed)
+  }
+  if (claimed.has(messageId)) return false
+  claimed.add(messageId)
   return true
 }

@@ -11,11 +11,12 @@
  * @module dsh-plugin-voice-interaction/client/ReadAloudAction
  */
 
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useSyncExternalStore, type JSX } from 'react'
 import type { AssistantMessageNode, ConversationNode } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { claimAutoRead, isVoiceModeOn, subscribeVoiceMode } from './voice-mode-store.js'
+import { speakReplacing } from './speech-synthesis.js'
 
 export type ReadAloudActionProps = PropsRuntime<'conversation.chat.assistant-actions'>
 
@@ -40,15 +41,15 @@ function textOfMessage(nodes: readonly ConversationNode[], messageId: string): s
  */
 export function ReadAloudAction({ useSession, sessionId, messageId }: ReadAloudActionProps): JSX.Element | null {
   const text = useSession(snapshot => textOfMessage(snapshot.chat.legacy.nodes, messageId))
-  const [voiceMode, setVoiceMode] = useState(() => isVoiceModeOn(sessionId))
-
-  useEffect(() => subscribeVoiceMode(sessionId, () => { setVoiceMode(isVoiceModeOn(sessionId)) }), [sessionId])
+  const voiceMode = useSyncExternalStore(
+    listener => subscribeVoiceMode(sessionId, listener),
+    () => isVoiceModeOn(sessionId),
+  )
 
   useEffect(() => {
     if (!voiceMode || text === undefined) return
     if (!claimAutoRead(sessionId, messageId)) return
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text))
+    speakReplacing(text)
   }, [voiceMode, text, sessionId, messageId])
 
   if (!('speechSynthesis' in window) || text === undefined) return null
@@ -57,10 +58,7 @@ export function ReadAloudAction({ useSession, sessionId, messageId }: ReadAloudA
     <button
       type="button"
       aria-label="Read this reply aloud"
-      onClick={() => {
-        window.speechSynthesis.cancel()
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text))
-      }}
+      onClick={() => { speakReplacing(text) }}
     >
       🔊
     </button>

@@ -12,7 +12,7 @@
  * @module dsh-plugin-voice-interaction/client/VoiceInputControl
  */
 
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type JSX } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { finalTranscriptsFrom, speechRecognitionConstructor, type SpeechRecognitionLike } from './speech-recognition.js'
@@ -32,10 +32,11 @@ export function VoiceInputControl({ inputActions, sessionId, useInput }: VoiceIn
   const disabled = phase !== 'plain'
 
   const [listening, setListening] = useState(false)
-  const [voiceMode, setVoiceMode] = useState(() => isVoiceModeOn(sessionId))
+  const voiceMode = useSyncExternalStore(
+    listener => subscribeVoiceMode(sessionId, listener),
+    () => isVoiceModeOn(sessionId),
+  )
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
-
-  useEffect(() => subscribeVoiceMode(sessionId, () => { setVoiceMode(isVoiceModeOn(sessionId)) }), [sessionId])
 
   // Stop and drop any in-flight recognition on unmount or session switch.
   useEffect(() => () => { recognitionRef.current?.abort() }, [sessionId])
