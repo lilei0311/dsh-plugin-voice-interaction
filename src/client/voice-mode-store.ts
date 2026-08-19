@@ -1,0 +1,66 @@
+/**
+ * Per-session "voice mode" on/off flag, shared between the composer's mic
+ * control and each finalized assistant message's read-aloud action — two
+ * independent slot registrations that need to agree on one boolean without
+ * either owning the other. A plain module-scoped map keeps this plugin
+ * self-contained instead of reverse-engineering the framework's `defineStore`
+ * seat, which this plugin has no verified example of using correctly.
+ * @module dsh-plugin-voice-interaction/client/voice-mode-store
+ */
+
+type Listener = () => void
+
+const enabled = new Map<string, boolean>()
+const listeners = new Map<string, Set<Listener>>()
+const lastAutoRead = new Map<string, string>()
+
+/**
+ * Current voice-mode flag for one session.
+ * @param sessionId - the session to read.
+ * @returns true when voice mode is on; false (the default) otherwise.
+ */
+export function isVoiceModeOn(sessionId: string): boolean {
+  return enabled.get(sessionId) ?? false
+}
+
+/**
+ * Flip one session's voice-mode flag and notify its subscribers.
+ * @param sessionId - the session to update.
+ */
+export function toggleVoiceMode(sessionId: string): void {
+  enabled.set(sessionId, !isVoiceModeOn(sessionId))
+  for (const listener of listeners.get(sessionId) ?? []) listener()
+}
+
+/**
+ * Subscribe to one session's voice-mode flag, `useSyncExternalStore`-shaped.
+ * @param sessionId - the session to watch.
+ * @param listener - called after the flag changes.
+ * @returns an unsubscribe function.
+ */
+export function subscribeVoiceMode(sessionId: string, listener: Listener): () => void {
+  let set = listeners.get(sessionId)
+  if (set === undefined) {
+    set = new Set()
+    listeners.set(sessionId, set)
+  }
+  set.add(listener)
+  return () => {
+    set.delete(listener)
+    if (set.size === 0) listeners.delete(sessionId)
+  }
+}
+
+/**
+ * Claim one message as auto-read for its session, first-caller-wins.
+ * Prevents a re-mounted (e.g. scrolled back into view) read-aloud action
+ * from re-speaking a reply voice mode already read once.
+ * @param sessionId - the owning session.
+ * @param messageId - the finalized assistant message's stable id.
+ * @returns true the first time this exact pair is claimed; false on every later call.
+ */
+export function claimAutoRead(sessionId: string, messageId: string): boolean {
+  if (lastAutoRead.get(sessionId) === messageId) return false
+  lastAutoRead.set(sessionId, messageId)
+  return true
+}
