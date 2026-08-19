@@ -8,6 +8,15 @@
 
 跟后端插件不一样,这个插件的所有功能都发生在装配好的 React Web UI 里——麦克风、真实语音、真正的浏览器,都是这个没有显示器的容器环境跑不了的东西。**已经验证过的**:`npm run typecheck` 和 `npm run build` 都针对 `0.1.0-rc.7` 版本真实发布的 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-conversation`、`@deepseek-ai/dsh-client-ui-slots` 包跑通过了——这个插件用到的每一个 prop(`inputActions.setDraft`、`useInput`、`useSession`,以及 `conversation.input.right` 和 `conversation.chat.assistant-actions` 两个插槽的类型契约)都是跟框架的真实类型声明对上的,不是瞎编的。**没有验证过的**:挂进真实的 `dsh web` 会话、拿到麦克风权限之后,界面和行为是不是真的对。动手用之前请先看下面的"手动验证清单"。
 
+## 不走任何模型、不走后端、不需要 API key
+
+识别和朗读走的都是浏览器原生的 Web Speech API——从来不经过 `dsh` 自己的模型配置,不经过任何 DeepSeek 模型,也完全不经过 `dsh` 的宿主进程。具体来说:
+
+- **语音转文字**(`SpeechRecognition` / Safari 的 `webkitSpeechRecognition`):Chrome/Edge 下,浏览器会把你的录音发到 **Google 的语音识别服务器**去做转写——这是浏览器厂商自己的实现细节,不受这个插件或者 `dsh` 控制。Safari 较新版本是设备端识别。目前没有设置项可以换成别的引擎(比如 Whisper、Azure Speech,或者自建服务)。
+- **文字转语音**(`speechSynthesis`):读的是你操作系统/浏览器自带的语音,完全本地,不联网。
+
+结果就是:这个插件**不消耗 token**,不管当前会话用的是哪个模型,行为都一样;但如果你的部署对"音频离开设备发给第三方(经 Chrome/Edge 发给 Google)"这件事有顾虑,开麦克风之前需要知道这一点。
+
 ## 加了什么
 
 - **麦克风转文字填输入框,不是转文字直接发送。** 输入框工具行(`conversation.input.right`,紧挨着模型选择按钮左边)多一个 🎙️ 按钮,点了启动浏览器的 `SpeechRecognition`。识别出的文字通过 `inputActions.setDraft` 写进输入框——跟框架自己用的是同一条公开写入路径——写完就停在那儿,你确认没问题了自己点发送。

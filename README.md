@@ -8,6 +8,15 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) **
 
 Unlike a backend `dsh` plugin, this one only does anything inside the assembled React Web UI — a mic, real speech, and an actual browser are outside what a container without a display can run. What *is* verified: `npm run typecheck` and `npm run build` both pass clean against the real published `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, and `@deepseek-ai/dsh-client-ui-slots` packages at `0.1.0-rc.7` — every prop this plugin reads (`inputActions.setDraft`, `useInput`, `useSession`, the `conversation.input.right` and `conversation.chat.assistant-actions` slot contracts) type-checks against the framework's actual declarations, not a guess. What is **not** verified: that it looks and behaves correctly once mounted in a real `dsh web` session with microphone access. See **Manual verification** below before you trust it.
 
+## No model, no backend, no API key
+
+Recognition and synthesis both ride the browser's native Web Speech API — never `dsh`'s own model config, never any DeepSeek model, never a call through the `dsh` host at all. Concretely:
+
+- **Speech-to-text** (`SpeechRecognition` / Safari's `webkitSpeechRecognition`): on Chrome/Edge, the browser sends your audio to **Google's speech-recognition servers** to transcribe it — that's a vendor implementation detail of the browser, outside this plugin's or `dsh`'s control. Safari's newer versions recognize on-device instead. There is currently no setting to swap in a different engine (e.g. Whisper, Azure Speech, a self-hosted service).
+- **Text-to-speech** (`speechSynthesis`): reads through whatever voices your OS/browser ships, entirely local — no network call.
+
+Net effect: this plugin costs zero tokens and works identically no matter which model the session is talking to, but if audio leaving the device to a third party (Google, via Chrome/Edge) is a concern for your deployment, that's worth knowing before you turn the mic on.
+
 ## What it adds
 
 - **Mic → draft, not mic → send.** A 🎙️ button in the composer's tool row (`conversation.input.right`, right before the model seat) starts the browser's `SpeechRecognition`. Transcribed text lands in the draft textarea through `inputActions.setDraft` — the same public write path the framework itself uses — and stops there. You still read it and press Send.
