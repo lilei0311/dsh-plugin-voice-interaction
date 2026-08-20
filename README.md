@@ -10,6 +10,7 @@ Unlike a backend `dsh` plugin, this one only does anything inside the assembled 
 
 - `npm run typecheck` passes clean against the real published `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, and `@deepseek-ai/dsh-client-ui-slots` packages — every prop this plugin reads (`inputActions.setDraft`, `useInput`, `useSession`, the `conversation.input.right` and `conversation.chat.assistant-actions` slot contracts) type-checks against the framework's actual declarations, not a guess.
 - `npm run build` produces the exact artifact shape DSH's client module loader requires: `lib/client/index.js` is a `window.__ModuleLoader__.load({ id, factory })` self-registering bundle (see [`tsdown.config.ts`](tsdown.config.ts)), not a plain ESM/CJS file — an earlier version of this package shipped the latter, which fails to load with `bundle ... loaded without registering "dsh-plugin-voice-interaction" via __ModuleLoader__.load`.
+- `npm test` runs `node`'s built-in test runner (no new dependency) against the decision logic that used to have real bugs: whether a reply just finished streaming (`src/client/finalization.ts`) and how the mic appends onto an existing draft (`src/client/compose-draft.ts`) are pulled out of their React components as plain functions specifically so they're unit-testable without a browser or a React renderer. `voice-mode-store.ts` was already plain enough to test directly. What's still *not* covered: the two components themselves (`VoiceInputControl.tsx`, `ReadAloudAction.tsx`) only wire these functions into hooks and slot props — that wiring is back to typecheck-only, same caveat as the rest of this section.
 
 What is **not** verified: that it looks and behaves correctly once mounted in a real `dsh web` session with microphone access. See **Manual verification** below before you trust it.
 
@@ -46,10 +47,14 @@ Run `dsh web` with this plugin composed in, open a session with the Web UI, and 
 
 1. **Mic button appears** in the composer's tool row, left of the model-select seat. Clicking it prompts for microphone permission (first time) and turns 🔴 while listening.
 2. **Speaking fills the draft** — say something, watch the transcript land in the textarea, click Stop (🔴 again), confirm the draft is editable and Send behaves normally.
-3. **Voice-mode toggle appears** next to the mic (🔈 by default). Clicking it flips to 🔊.
-4. **With voice mode on**, send a message and confirm the assistant's reply is spoken aloud automatically once it finalizes — and only once (scroll it out of view and back in; it should not repeat).
-5. **With voice mode off**, confirm replies stay silent, and that the manual 🔊 button next to each reply's Copy button still speaks that one reply on click.
-6. **Unsupported browsers**: in a browser without `SpeechRecognition` (e.g. Firefox without a flag), confirm the mic button simply doesn't render rather than erroring; same for `speechSynthesis` and the read-aloud controls.
+3. **Speaking appends, doesn't overwrite** — type a few words first, *then* click the mic; confirm your typed text is still there and the transcript lands after it, not in place of it.
+4. **Voice-mode toggle appears** next to the mic (🔈 by default). Clicking it flips to 🔊.
+5. **With voice mode on**, send a message and confirm the assistant's reply is spoken aloud automatically once it finalizes — and only once (scroll it out of view and back in; it should not repeat).
+6. **Turning voice mode on mid-session does not speak old replies** — with a few finalized replies already on screen, click the voice-mode toggle and confirm nothing is read aloud until the *next* new reply finalizes.
+7. **With voice mode off**, confirm replies stay silent, and that the manual 🔊 button next to each reply's Copy button still speaks that one reply on click.
+8. **Unsupported browsers**: in a browser without `SpeechRecognition` (e.g. Firefox without a flag), confirm the mic button simply doesn't render rather than erroring; same for `speechSynthesis` and the read-aloud controls.
+
+Checks 3 and 6 were added after fixing real bugs that this checklist's earlier, narrower phrasing didn't catch — "send a message and confirm it's read" reads fine when voice mode was already on before the message existed; it doesn't exercise flipping the toggle against replies that already exist.
 
 If any of these don't match, it's a real bug in this plugin — please open an issue with what you saw.
 
