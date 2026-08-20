@@ -11,12 +11,13 @@
  * @module dsh-plugin-voice-interaction/client/ReadAloudAction
  */
 
-import { useEffect, useSyncExternalStore, type JSX } from 'react'
+import { useEffect, useRef, useSyncExternalStore, type JSX } from 'react'
 import type { AssistantMessageNode, ConversationNode } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { claimAutoRead, isVoiceModeOn, subscribeVoiceMode } from './voice-mode-store.js'
 import { speakReplacing } from './speech-synthesis.js'
+import { justFinalized } from './finalization.js'
 
 export type ReadAloudActionProps = PropsRuntime<'conversation.chat.assistant-actions'>
 
@@ -46,8 +47,21 @@ export function ReadAloudAction({ useSession, sessionId, messageId }: ReadAloudA
     () => isVoiceModeOn(sessionId),
   )
 
+  // `useRef(text)` seeds this with whatever `text` already is on first
+  // render — an already-finalized historical message mounts with its text
+  // present from the start, so this starts equal to `text` and never reads
+  // as a fresh transition below.
+  const prevTextRef = useRef<string | undefined>(text)
+
   useEffect(() => {
-    if (!voiceMode || text === undefined) return
+    const prevText = prevTextRef.current
+    prevTextRef.current = text
+    // Without this edge check, `voiceMode` flipping on later — with dozens
+    // of already-mounted historical replies sitting on defined text —
+    // re-runs this effect for every one of them and speaks them all (last
+    // one wins after each speak() cancels the previous, but every message
+    // still gets wrongly claimed as "read").
+    if (!voiceMode || text === undefined || !justFinalized(prevText, text)) return
     if (!claimAutoRead(sessionId, messageId)) return
     speakReplacing(text)
   }, [voiceMode, text, sessionId, messageId])

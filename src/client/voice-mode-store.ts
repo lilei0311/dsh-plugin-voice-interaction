@@ -51,7 +51,13 @@ export function subscribeVoiceMode(sessionId: string, listener: Listener): () =>
   set.add(listener)
   return () => {
     set.delete(listener)
-    if (set.size === 0) listeners.delete(sessionId)
+    // Only remove the map entry if it still points at THIS set — a stale
+    // unsubscribe closure (React StrictMode's double cleanup, or any other
+    // repeated call) must not delete a newer set that already replaced it,
+    // which would silently orphan whoever subscribed after us.
+    if (set.size === 0 && listeners.get(sessionId) === set) {
+      listeners.delete(sessionId)
+    }
   }
 }
 
