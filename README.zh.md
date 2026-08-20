@@ -6,7 +6,12 @@
 
 ## ⚠️ 只做过类型检查,没有在浏览器里跑过
 
-跟后端插件不一样,这个插件的所有功能都发生在装配好的 React Web UI 里——麦克风、真实语音、真正的浏览器,都是这个没有显示器的容器环境跑不了的东西。**已经验证过的**:`npm run typecheck` 和 `npm run build` 都针对 `0.1.0-rc.7` 版本真实发布的 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-conversation`、`@deepseek-ai/dsh-client-ui-slots` 包跑通过了——这个插件用到的每一个 prop(`inputActions.setDraft`、`useInput`、`useSession`,以及 `conversation.input.right` 和 `conversation.chat.assistant-actions` 两个插槽的类型契约)都是跟框架的真实类型声明对上的,不是瞎编的。**没有验证过的**:挂进真实的 `dsh web` 会话、拿到麦克风权限之后,界面和行为是不是真的对。动手用之前请先看下面的"手动验证清单"。
+跟后端插件不一样,这个插件的所有功能都发生在装配好的 React Web UI 里——麦克风、真实语音、真正的浏览器,都是这个没有显示器的容器环境跑不了的东西。**已经验证过的**:
+
+- `npm run typecheck` 针对真实发布的 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-ui-conversation`、`@deepseek-ai/dsh-client-ui-slots` 包跑通过了——这个插件用到的每一个 prop(`inputActions.setDraft`、`useInput`、`useSession`,以及 `conversation.input.right` 和 `conversation.chat.assistant-actions` 两个插槽的类型契约)都是跟框架的真实类型声明对上的,不是瞎编的。
+- `npm run build` 产出的是 DSH 客户端模块加载器要求的那种确切格式:`lib/client/index.js` 是一个自注册的 `window.__ModuleLoader__.load({ id, factory })` bundle(见 [`tsdown.config.ts`](tsdown.config.ts)),不是普通的 ESM/CJS 文件——这个包早期版本发的就是后者,加载时会报 `bundle ... loaded without registering "dsh-plugin-voice-interaction" via __ModuleLoader__.load`。
+
+**没有验证过的**:挂进真实的 `dsh web` 会话、拿到麦克风权限之后,界面和行为是不是真的对。动手用之前请先看下面的"手动验证清单"。
 
 ## 不走任何模型、不走后端、不需要 API key
 

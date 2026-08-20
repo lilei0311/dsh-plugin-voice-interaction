@@ -6,7 +6,12 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`) **
 
 ## ⚠️ Verified by typecheck, not by a browser
 
-Unlike a backend `dsh` plugin, this one only does anything inside the assembled React Web UI — a mic, real speech, and an actual browser are outside what a container without a display can run. What *is* verified: `npm run typecheck` and `npm run build` both pass clean against the real published `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, and `@deepseek-ai/dsh-client-ui-slots` packages at `0.1.0-rc.7` — every prop this plugin reads (`inputActions.setDraft`, `useInput`, `useSession`, the `conversation.input.right` and `conversation.chat.assistant-actions` slot contracts) type-checks against the framework's actual declarations, not a guess. What is **not** verified: that it looks and behaves correctly once mounted in a real `dsh web` session with microphone access. See **Manual verification** below before you trust it.
+Unlike a backend `dsh` plugin, this one only does anything inside the assembled React Web UI — a mic, real speech, and an actual browser are outside what a container without a display can run. What *is* verified:
+
+- `npm run typecheck` passes clean against the real published `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-ui-conversation`, and `@deepseek-ai/dsh-client-ui-slots` packages — every prop this plugin reads (`inputActions.setDraft`, `useInput`, `useSession`, the `conversation.input.right` and `conversation.chat.assistant-actions` slot contracts) type-checks against the framework's actual declarations, not a guess.
+- `npm run build` produces the exact artifact shape DSH's client module loader requires: `lib/client/index.js` is a `window.__ModuleLoader__.load({ id, factory })` self-registering bundle (see [`tsdown.config.ts`](tsdown.config.ts)), not a plain ESM/CJS file — an earlier version of this package shipped the latter, which fails to load with `bundle ... loaded without registering "dsh-plugin-voice-interaction" via __ModuleLoader__.load`.
+
+What is **not** verified: that it looks and behaves correctly once mounted in a real `dsh web` session with microphone access. See **Manual verification** below before you trust it.
 
 ## No model, no backend, no API key
 
