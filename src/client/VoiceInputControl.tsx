@@ -17,7 +17,6 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { finalTranscriptsFrom, speechRecognitionConstructor, type SpeechRecognitionLike } from './speech-recognition.js'
 import { isVoiceModeOn, subscribeVoiceMode, toggleVoiceMode } from './voice-mode-store.js'
-import { appendTranscript } from './compose-draft.js'
 
 export type VoiceInputControlProps = PropsRuntime<'conversation.input.right'>
 
@@ -30,7 +29,6 @@ export type VoiceInputControlProps = PropsRuntime<'conversation.input.right'>
 export function VoiceInputControl({ inputActions, sessionId, useInput }: VoiceInputControlProps): JSX.Element | null {
   const Ctor = speechRecognitionConstructor()
   const phase = useInput(state => state.phase)
-  const draft = useInput(state => state.draft)
   const disabled = phase !== 'plain'
 
   const [listening, setListening] = useState(false)
@@ -39,11 +37,6 @@ export function VoiceInputControl({ inputActions, sessionId, useInput }: VoiceIn
     () => isVoiceModeOn(sessionId),
   )
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
-  // Live draft, readable from inside the recognition callbacks without
-  // re-creating them on every keystroke (onMicClick only reads this once,
-  // at start(), to capture the base to append onto).
-  const draftRef = useRef(draft)
-  draftRef.current = draft
 
   // Stop and drop any in-flight recognition on unmount or session switch.
   useEffect(() => () => { recognitionRef.current?.abort() }, [sessionId])
@@ -58,16 +51,12 @@ export function VoiceInputControl({ inputActions, sessionId, useInput }: VoiceIn
     recognition.lang = navigator.language
     recognition.continuous = true
     recognition.interimResults = false
-    // Whatever the user already typed stays put; recognized speech appends
-    // after it rather than replacing it. Captured once here (not re-read on
-    // every result) so our own setDraft calls below don't feed back into it.
-    const base = draftRef.current
     let transcript = ''
     recognition.onresult = (event) => {
       const pieces = finalTranscriptsFrom(event)
       if (pieces.length === 0) return
       transcript = `${transcript}${transcript === '' ? '' : ' '}${pieces.join(' ')}`
-      inputActions.setDraft(appendTranscript(base, transcript))
+      inputActions.setDraft(transcript)
     }
     recognition.onerror = () => { setListening(false) }
     recognition.onend = () => { setListening(false); recognitionRef.current = null }
